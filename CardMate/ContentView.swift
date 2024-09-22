@@ -18,7 +18,7 @@ struct ContentView: View {
     @State private var cards: [Card] = []
     @State private var promptForName = false
     @State private var selectedCardName = ""
-    
+    let locationFetcher = LocationFetcher()
     
     var body: some View {
         NavigationStack {
@@ -47,6 +47,7 @@ struct ContentView: View {
             .onChange(of: selectedCardImage) { oldValue, newValue in
                 if newValue != nil {
                     promptForName = true
+                    locationFetcher.start()
                 }
             }
             .sheet(isPresented: $promptForName, onDismiss: resetNameAndImage) {
@@ -114,7 +115,8 @@ struct ContentView: View {
         
         do {
             guard let imageData = try await selectedCardImage?.loadTransferable(type: Data.self) else { return }
-            cards.append(Card(name: selectedCardName, imageData: imageData))
+            let currentLocation = getCurrentLocation()
+            cards.append(Card(name: selectedCardName, imageData: imageData, latitude: currentLocation.latitude, longitude: currentLocation.longitude))
             let data = try JSONEncoder().encode(cards)
             try data.write(to: url, options: [.atomic, .completeFileProtection])
         } catch {
@@ -131,6 +133,14 @@ struct ContentView: View {
             print("Cards loaded successfully.")
         } catch {
             print("No cards to load or failed to load: \(error.localizedDescription)")
+        }
+    }
+    
+    func getCurrentLocation() -> CLLocationCoordinate2D {
+        if let location = locationFetcher.lastKnownLocation {
+            return location
+        } else {
+            return CLLocationCoordinate2D(latitude: 43.4643, longitude: -80.5204)
         }
     }
     
